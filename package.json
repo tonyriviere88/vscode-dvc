@@ -1,0 +1,279 @@
+{
+  "name": "dvc-scm",
+  "displayName": "DVC Source Control",
+  "description": "Git-like Source Control view for DVC: tracked folders, pending changes, diffs against the DVC cache, commit / checkout / push / pull.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers"
+  ],
+  "keywords": [
+    "dvc",
+    "data version control",
+    "scm"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/.dvc/config",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "DVC",
+      "properties": {
+        "dvcScm.executable": {
+          "type": "string",
+          "default": "dvc",
+          "markdownDescription": "Command used to run DVC: a path, or a command line such as `poetry run dvc` (resolved once to the Poetry virtualenv's `dvc`, for speed). With the default `dvc`, when it is not on `PATH`, the project's `.venv` / `venv` or Poetry environment is used.",
+          "scope": "machine-overridable"
+        },
+        "dvcScm.showCleanOutputs": {
+          "type": "boolean",
+          "default": true,
+          "description": "List every DVC-tracked output in the Source Control view, including those without pending changes."
+        },
+        "dvcScm.checkRemote": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Also report files not yet pushed to the default remote (`dvc data status --not-in-remote`). This contacts the remote on each refresh and can be slow."
+        },
+        "dvcScm.showCommitted": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show changes already committed to the DVC cache whose .dvc / dvc.lock file is not yet committed in Git."
+        },
+        "dvcScm.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh the DVC status automatically when files change."
+        },
+        "dvcScm.refreshDelay": {
+          "type": "number",
+          "default": 1500,
+          "minimum": 200,
+          "description": "Delay in milliseconds between the last file change and the automatic status refresh."
+        },
+        "dvcScm.decorations.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show DVC status badges and colours in the Explorer."
+        }
+      }
+    },
+    "colors": [
+      {
+        "id": "dvcScm.modifiedResourceForeground",
+        "description": "Colour of files modified in a DVC-tracked output.",
+        "defaults": {
+          "dark": "#E2C08D",
+          "light": "#895503",
+          "highContrast": "#E2C08D"
+        }
+      },
+      {
+        "id": "dvcScm.addedResourceForeground",
+        "description": "Colour of files added to a DVC-tracked output.",
+        "defaults": {
+          "dark": "#81B88B",
+          "light": "#587C0C",
+          "highContrast": "#A1E3AD"
+        }
+      },
+      {
+        "id": "dvcScm.deletedResourceForeground",
+        "description": "Colour of files deleted from a DVC-tracked output.",
+        "defaults": {
+          "dark": "#C74E39",
+          "light": "#AD0707",
+          "highContrast": "#C74E39"
+        }
+      },
+      {
+        "id": "dvcScm.missingResourceForeground",
+        "description": "Colour of files whose data is missing from the local DVC cache or the remote.",
+        "defaults": {
+          "dark": "#73C991",
+          "light": "#007100",
+          "highContrast": "#73C991"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "dvcScm.refresh",
+        "title": "Refresh",
+        "category": "DVC",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dvcScm.commitAll",
+        "title": "Commit All Changes to DVC Cache",
+        "category": "DVC",
+        "icon": "$(check)"
+      },
+      {
+        "command": "dvcScm.checkoutAll",
+        "title": "Discard All Changes (dvc checkout)",
+        "category": "DVC",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "dvcScm.push",
+        "title": "Push",
+        "category": "DVC",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "dvcScm.pull",
+        "title": "Pull",
+        "category": "DVC",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "dvcScm.fetch",
+        "title": "Fetch",
+        "category": "DVC"
+      },
+      {
+        "command": "dvcScm.showOutput",
+        "title": "Show DVC Output",
+        "category": "DVC"
+      },
+      {
+        "command": "dvcScm.shareWorktreeCache",
+        "title": "Use the DVC Cache of Another Git Worktree",
+        "category": "DVC"
+      },
+      {
+        "command": "dvcScm.commitOutput",
+        "title": "Commit to DVC Cache",
+        "category": "DVC",
+        "icon": "$(check)"
+      },
+      {
+        "command": "dvcScm.checkoutOutput",
+        "title": "Discard Changes (dvc checkout)",
+        "category": "DVC",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "dvcScm.pushOutput",
+        "title": "Push",
+        "category": "DVC",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "dvcScm.pullOutput",
+        "title": "Pull",
+        "category": "DVC",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "dvcScm.openDvcFile",
+        "title": "Open .dvc / dvc.lock File",
+        "category": "DVC",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "dvcScm.revealOutput",
+        "title": "Reveal in Explorer",
+        "category": "DVC"
+      },
+      {
+        "command": "dvcScm.openChange",
+        "title": "Open Changes",
+        "category": "DVC",
+        "icon": "$(compare-changes)"
+      },
+      {
+        "command": "dvcScm.openFile",
+        "title": "Open File",
+        "category": "DVC",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "dvcScm.checkoutResource",
+        "title": "Discard Changes (dvc checkout)",
+        "category": "DVC",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "dvcScm.pullResource",
+        "title": "Pull",
+        "category": "DVC",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "dvcScm.pushResource",
+        "title": "Push",
+        "category": "DVC",
+        "icon": "$(cloud-upload)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "dvcScm.commitOutput", "when": "false" },
+        { "command": "dvcScm.checkoutOutput", "when": "false" },
+        { "command": "dvcScm.pushOutput", "when": "false" },
+        { "command": "dvcScm.pullOutput", "when": "false" },
+        { "command": "dvcScm.openDvcFile", "when": "false" },
+        { "command": "dvcScm.revealOutput", "when": "false" },
+        { "command": "dvcScm.openChange", "when": "false" },
+        { "command": "dvcScm.openFile", "when": "false" },
+        { "command": "dvcScm.checkoutResource", "when": "false" },
+        { "command": "dvcScm.pullResource", "when": "false" },
+        { "command": "dvcScm.pushResource", "when": "false" }
+      ],
+      "scm/title": [
+        { "command": "dvcScm.commitAll", "group": "navigation@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.refresh", "group": "navigation@2", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.pull", "group": "1_sync@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.push", "group": "1_sync@2", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.fetch", "group": "1_sync@3", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.checkoutAll", "group": "2_changes@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.shareWorktreeCache", "group": "3_setup@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.showOutput", "group": "3_setup@2", "when": "scmProvider == dvc" }
+      ],
+      "scm/resourceGroup/context": [
+        { "command": "dvcScm.openDvcFile", "group": "inline@1", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.checkoutOutput", "group": "inline@2", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.commitOutput", "group": "inline@3", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.commitOutput", "group": "1_modification@1", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.checkoutOutput", "group": "1_modification@2", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.pullOutput", "group": "2_sync@1", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.pushOutput", "group": "2_sync@2", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.openDvcFile", "group": "3_navigation@1", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" },
+        { "command": "dvcScm.revealOutput", "group": "3_navigation@2", "when": "scmProvider == dvc && scmResourceGroup =~ /^out:/" }
+      ],
+      "scm/resourceState/context": [
+        { "command": "dvcScm.openFile", "group": "inline@1", "when": "scmProvider == dvc && scmResourceState =~ /exists/" },
+        { "command": "dvcScm.checkoutResource", "group": "inline@2", "when": "scmProvider == dvc && scmResourceState =~ /uncommitted/" },
+        { "command": "dvcScm.pullResource", "group": "inline@3", "when": "scmProvider == dvc && scmResourceState =~ /notInCache/" },
+        { "command": "dvcScm.pushResource", "group": "inline@3", "when": "scmProvider == dvc && scmResourceState =~ /notInRemote/" },
+        { "command": "dvcScm.openChange", "group": "navigation@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.openFile", "group": "navigation@2", "when": "scmProvider == dvc && scmResourceState =~ /exists/" },
+        { "command": "dvcScm.checkoutResource", "group": "1_modification@1", "when": "scmProvider == dvc && scmResourceState =~ /uncommitted/" },
+        { "command": "dvcScm.pullResource", "group": "2_sync@1", "when": "scmProvider == dvc" },
+        { "command": "dvcScm.pushResource", "group": "2_sync@2", "when": "scmProvider == dvc" }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.5.0"
+  }
+}
