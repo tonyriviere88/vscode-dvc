@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { CACHE_SCHEME, CacheFileSystemProvider } from './cacheFs';
 import { DvcDecorationProvider } from './decorations';
 import { clearDvcCommandCache } from './dvcCli';
-import { getGitApi, isInside, watchGitHead } from './gitHead';
+import { getGitApi, isInside, watchGitHead, whenGitRepositoryOpen } from './gitHead';
 import { DvcRepository, DvcResource } from './repository';
 import { TrackedOutput } from './tracked';
 
@@ -12,6 +12,7 @@ const repos = new Map<string, DvcRepository>();
 let log: vscode.OutputChannel;
 let decorations: DvcDecorationProvider;
 let context: vscode.ExtensionContext;
+let git: ReturnType<typeof getGitApi>;
 
 /** API returned to other extensions (and tests). */
 export interface DvcScmApi {
@@ -33,6 +34,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<DvcScmApi>
   );
 
   registerCommands(ctx);
+  git = getGitApi(log);
 
   ctx.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
@@ -54,10 +56,10 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<DvcScmApi>
   await discover();
 
   // A Git commit / checkout only writes inside .git/, which the repositories' file watchers ignore.
-  void getGitApi(log).then((git) => {
-    if (git) {
+  void git.then((api) => {
+    if (api) {
       ctx.subscriptions.push(
-        watchGitHead(git, (gitRoot) => {
+        watchGitHead(api, (gitRoot) => {
           for (const repo of repos.values()) {
             if (isInside(repo.root, gitRoot)) {
               repo.scheduleRefresh(0);
@@ -110,6 +112,11 @@ async function findRoots(): Promise<string[]> {
 
 async function discover(): Promise<void> {
   const roots = await findRoots();
+  // Register after Git so that Git stays the default repository in the Source Control view.
+  const api = await git;
+  if (api) {
+    await Promise.all(roots.filter((r) => !repos.has(r)).map((r) => whenGitRepositoryOpen(api, r)));
+  }
   for (const [root, repo] of repos) {
     if (!roots.includes(root)) {
       decorations.remove(repo);

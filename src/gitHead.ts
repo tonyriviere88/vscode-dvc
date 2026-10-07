@@ -11,6 +11,8 @@ interface GitRepository {
 }
 
 interface GitApi {
+  readonly state: 'uninitialized' | 'initialized';
+  readonly onDidChangeState: vscode.Event<'uninitialized' | 'initialized'>;
   readonly repositories: GitRepository[];
   readonly onDidOpenRepository: vscode.Event<GitRepository>;
   readonly onDidCloseRepository: vscode.Event<GitRepository>;
@@ -76,6 +78,30 @@ export function watchGitHead(api: GitApi, onHeadChange: (gitRoot: string) => voi
       watched.clear();
     },
   };
+}
+
+/**
+ * Resolves once Git has opened the repository containing `dir`, or has finished its initial scan without
+ * one, or after `timeoutMs`. VS Code makes the first registered of two source controls with the same root
+ * the active one, so creating the DVC source control after Git's keeps Git the default repository.
+ */
+export function whenGitRepositoryOpen(api: GitApi, dir: string, timeoutMs = 10000): Promise<void> {
+  const ready = () => api.state === 'initialized' || api.repositories.some((r) => isInside(dir, r.rootUri.fsPath));
+  if (ready()) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      opened.dispose();
+      changed.dispose();
+      resolve();
+    };
+    const check = () => ready() && done();
+    const timer = setTimeout(done, timeoutMs);
+    const opened = api.onDidOpenRepository(check);
+    const changed = api.onDidChangeState(check);
+  });
 }
 
 /** Whether `dir` is `root` or below it. */
