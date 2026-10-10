@@ -2,6 +2,10 @@
 
 A VS Code extension that adds a DVC provider to the **Source Control** view. It works like the built-in Git view, but for data tracked by [DVC](https://dvc.org).
 
+<p align="center">
+  <img src="images/overview.png" alt="The DVC provider in the Source Control view, below Git: tracked outputs with their pending changes, and a file diffed against the DVC cache">
+</p>
+
 ## What you get
 
 - **One entry per DVC repository** found in the workspace, including a workspace opened on a sub-folder of the repo, DVC subrepos, and Git worktrees.
